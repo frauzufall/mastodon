@@ -47,10 +47,10 @@
 			<artifactId>bigdataviewer-core</artifactId>
 		</dependency>
 		<!-- run time: brings in the original IJ1 window -->
-		<dependency>
-			<groupId>net.imagej</groupId>
-			<artifactId>imagej-legacy</artifactId>
-		</dependency>		
+<!--		<dependency>-->
+<!--			<groupId>net.imagej</groupId>-->
+<!--			<artifactId>imagej-legacy</artifactId>-->
+<!--		</dependency>		-->
 		
 		<!-- BDV and spimdata dependecies -->
 		<dependency>
@@ -128,6 +128,11 @@
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>IO_</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.frauzufall</groupId>
+			<artifactId>jogl-minimal</artifactId>
+			<version>emission-absorbtion-786f2538a6-1</version>
 		</dependency>
 
 		<!-- Test dependencies -->
@@ -250,6 +255,10 @@
 		<repository>
 			<id>scijava.public</id>
 			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+		<repository>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
 		</repository>
 	</repositories>
 </project>

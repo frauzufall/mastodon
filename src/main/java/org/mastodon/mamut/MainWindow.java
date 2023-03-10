@@ -103,6 +103,10 @@ public class MainWindow extends JFrame
 		prepareButton( bdvButton, "bdv", BDV_ICON_MEDIUM );
 		buttonsPanel.add( bdvButton, "grow, wrap" );
 
+		final JButton bvvButton = new JButton( actionMap.get( WindowManager.NEW_BVV_VIEW ) );
+		prepareButton( bvvButton, "bvv", BDV_ICON_MEDIUM );
+		buttonsPanel.add( bvvButton, "grow, wrap" );
+
 		final JButton selectionTableButton = new JButton( actionMap.get( WindowManager.NEW_SELECTION_TABLE_VIEW ) );
 		prepareButton( selectionTableButton, "selection table", TABLE_ICON_MEDIUM );
 		buttonsPanel.add( selectionTableButton, "grow" );
@@ -276,6 +280,7 @@ public class MainWindow extends JFrame
 						item( WindowManager.OPEN_ONLINE_DOCUMENTATION ) ),
 				windowMenu(
 						item( WindowManager.NEW_BDV_VIEW ),
+						item( WindowManager.NEW_BVV_VIEW ),
 						item( WindowManager.NEW_TRACKSCHEME_VIEW ),
 						item( WindowManager.NEW_TABLE_VIEW ),
 						item( WindowManager.NEW_SELECTION_TABLE_VIEW ),

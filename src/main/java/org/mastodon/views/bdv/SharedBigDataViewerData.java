@@ -28,27 +28,6 @@
  */
 package org.mastodon.views.bdv;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
-import javax.swing.JOptionPane;
-
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.JDOMException;
-import org.jdom2.input.SAXBuilder;
-import org.jdom2.output.Format;
-import org.jdom2.output.XMLOutputter;
-import org.mastodon.util.DatasetInfoParser;
-import org.mastodon.util.DummySpimData;
-import org.scijava.ui.behaviour.io.InputTriggerConfig;
-
 import bdv.BigDataViewer;
 import bdv.TransformEventHandler2D;
 import bdv.TransformEventHandler3D;
@@ -67,15 +46,7 @@ import bdv.tools.brightness.ConverterSetup;
 import bdv.tools.brightness.MinMaxGroup;
 import bdv.tools.brightness.SetupAssignments;
 import bdv.tools.transformation.ManualTransformation;
-import bdv.viewer.BasicViewerState;
-import bdv.viewer.ConverterSetups;
-import bdv.viewer.DisplayMode;
-import bdv.viewer.RequestRepaint;
-import bdv.viewer.Source;
-import bdv.viewer.SourceAndConverter;
-import bdv.viewer.ViewerOptions;
-import bdv.viewer.ViewerPanel;
-import bdv.viewer.ViewerState;
+import bdv.viewer.*;
 import ij.CompositeImage;
 import ij.IJ;
 import ij.ImagePlus;
@@ -98,6 +69,27 @@ import net.imglib2.FinalDimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.ARGBType;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.JDOMException;
+import org.jdom2.input.SAXBuilder;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
+import org.mastodon.util.DatasetInfoParser;
+import org.mastodon.util.DummySpimData;
+import org.scijava.ui.behaviour.io.InputTriggerConfig;
+import tpietzsch.example2.VolumeViewerOptions;
+import tpietzsch.example2.VolumeViewerPanel;
+
+import javax.swing.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class SharedBigDataViewerData
 {
@@ -116,6 +108,8 @@ public class SharedBigDataViewerData
 	private final Bookmarks bookmarks;
 
 	private final ViewerOptions options;
+
+	private final VolumeViewerOptions volumeOptions;
 
 	private final InputTriggerConfig inputTriggerConfig;
 
@@ -137,6 +131,7 @@ public class SharedBigDataViewerData
 			final CacheControl cache,
 			final int numTimepoints,
 			final ViewerOptions options,
+			final VolumeViewerOptions volumeOptions,
 			final RequestRepaint requestRepaint )
 	{
 		this.spimData = spimData;
@@ -156,6 +151,11 @@ public class SharedBigDataViewerData
 
 		this.is2D = computeIs2D();
 		this.options = options
+				.inputTriggerConfig( inputTriggerConfig )
+				.transformEventHandlerFactory( is2D
+						? TransformEventHandler2D::new
+						: TransformEventHandler3D::new );
+		this.volumeOptions = volumeOptions
 				.inputTriggerConfig( inputTriggerConfig )
 				.transformEventHandlerFactory( is2D
 						? TransformEventHandler2D::new
@@ -220,7 +220,31 @@ public class SharedBigDataViewerData
 		bookmarks.restoreFromXml( root );
 	}
 
+	public void loadVolumeSettings( final String xmlFilename, final VolumeViewerPanel viewer ) throws IOException, JDOMException
+	{
+		final SAXBuilder sax = new SAXBuilder();
+		final Document doc = sax.build( xmlFilename );
+		final Element root = doc.getRootElement();
+		if ( viewer != null )
+			viewer.stateFromXml( root );
+		setupAssignments.restoreFromXml( root );
+		manualTransformation.restoreFromXml( root );
+		bookmarks.restoreFromXml( root );
+	}
+
 	public void saveSettings( final String xmlFilename, final ViewerPanel viewer ) throws IOException
+	{
+		final Element root = new Element( "Settings" );
+		root.addContent( viewer.stateToXml() );
+		root.addContent( setupAssignments.toXml() );
+		root.addContent( manualTransformation.toXml() );
+		root.addContent( bookmarks.toXml() );
+		final Document doc = new Document( root );
+		final XMLOutputter xout = new XMLOutputter( Format.getPrettyFormat() );
+		xout.output( doc, new FileWriter( xmlFilename ) );
+	}
+
+	public void saveVolumeSettings( final String xmlFilename, final VolumeViewerPanel viewer ) throws IOException
 	{
 		final Element root = new Element( "Settings" );
 		root.addContent( viewer.stateToXml() );
@@ -240,6 +264,11 @@ public class SharedBigDataViewerData
 	public ViewerOptions getOptions()
 	{
 		return options;
+	}
+
+	public VolumeViewerOptions getVolumeOptions()
+	{
+		return volumeOptions;
 	}
 
 	public InputTriggerConfig getInputTriggerConfig()
@@ -358,6 +387,7 @@ public class SharedBigDataViewerData
 	public static SharedBigDataViewerData fromSpimDataXmlFile(
 			String spimDataXmlFilename,
 			final ViewerOptions viewerOptions,
+			final VolumeViewerOptions volumeViewerOptions,
 			final RequestRepaint requestRepaint ) throws SpimDataException, IOException
 	{
 		// Load SpimData
@@ -437,6 +467,7 @@ public class SharedBigDataViewerData
 				cache,
 				numTimepoints,
 				viewerOptions,
+				volumeViewerOptions,
 				requestRepaint );
 
 		if ( !sbdv.tryLoadSettings( spimDataXmlFilename ) )
@@ -457,6 +488,7 @@ public class SharedBigDataViewerData
 	public static SharedBigDataViewerData fromImagePlus(
 			final ImagePlus imp,
 			final ViewerOptions viewerOptions,
+			final VolumeViewerOptions volumeViewerOptions,
 			final RequestRepaint requestRepaint )
 	{
 		// check the image type
@@ -583,6 +615,7 @@ public class SharedBigDataViewerData
 				cache,
 				numTimepoints,
 				viewerOptions,
+				volumeViewerOptions,
 				requestRepaint );
 
 		// File info

@@ -102,6 +102,7 @@ import mpicbg.spim.data.SpimData;
 import mpicbg.spim.data.SpimDataException;
 import mpicbg.spim.data.XmlIoSpimData;
 import mpicbg.spim.data.generic.sequence.BasicViewSetup;
+import tpietzsch.example2.VolumeViewerOptions;
 
 public class ProjectManager
 {
@@ -913,6 +914,11 @@ public class ProjectManager
 				.shareKeyPressedEvents( windowManager.getKeyPressedManager() )
 				.msgOverlay( new MessageOverlayAnimator( 1500, 0.005, 0.02 ) );
 
+		final VolumeViewerOptions volumeOptions = VolumeViewerOptions.options()
+				.shareKeyPressedEvents( windowManager.getKeyPressedManager() )
+				.msgOverlay( new MessageOverlayAnimator( 1500, 0.005, 0.02 ) );
+
+
 		// Is it based on ImagePlus?
 		if ( project instanceof MamutImagePlusProject )
 		{
@@ -920,6 +926,7 @@ public class ProjectManager
 			return SharedBigDataViewerData.fromImagePlus(
 					mipp.getImagePlus(),
 					options,
+					volumeOptions,
 					() -> windowManager.forEachBdvView( MamutViewBdv::requestRepaint ) );
 		}
 
@@ -927,6 +934,7 @@ public class ProjectManager
 		return SharedBigDataViewerData.fromSpimDataXmlFile(
 				project.getDatasetXmlFile().getAbsolutePath(),
 				options,
+				volumeOptions,
 				() -> windowManager.forEachBdvView( MamutViewBdv::requestRepaint ) );
 	}
 }

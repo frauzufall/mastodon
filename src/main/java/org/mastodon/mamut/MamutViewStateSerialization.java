@@ -637,6 +637,26 @@ class MamutViewStateSerialization
 				windowManager.createBranchBigDataViewer( guiState );
 				break;
 			}
+			case "MamutViewBvv":
+			{
+				try {
+					final MamutViewBvv bvv = windowManager.createBigVolumeViewer( guiState );
+
+					// Store context provider.
+					contextProviders.put( bvv.getContextProvider().getName(), bvv.getContextProvider() );
+				}
+				catch (final IllegalArgumentException iae) {
+					System.err.println( "Info: Failed restoring state of a BigDataViewer window, thus not showing it.\n"
+							+ "      You may want to resave your project to replace the previous (failing) state with the current (okay) state." );
+				}
+				break;
+			}
+
+			case "MamutBranchViewBvv":
+			{
+				windowManager.createBranchBigVolumeViewer( guiState );
+				break;
+			}
 
 			case "MamutViewTrackScheme":
 			{

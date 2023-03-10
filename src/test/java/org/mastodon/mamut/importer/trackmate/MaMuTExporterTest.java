@@ -76,6 +76,7 @@ import bdv.viewer.ViewerOptions;
 import fiji.plugin.mamut.SourceSettings;
 import fiji.plugin.mamut.io.MamutXmlReader;
 import mpicbg.spim.data.SpimDataException;
+import tpietzsch.example2.VolumeViewerOptions;
 
 public class MaMuTExporterTest
 {
@@ -328,7 +329,7 @@ public class MaMuTExporterTest
 		final MamutProject project = new MamutProjectIO().load( MASTODON_FILE );
 
 		final String spimDataXmlFilename = project.getDatasetXmlFile().getAbsolutePath();
-		final SharedBigDataViewerData sharedBdvData = SharedBigDataViewerData.fromSpimDataXmlFile( spimDataXmlFilename, new ViewerOptions(), () -> {} );
+		final SharedBigDataViewerData sharedBdvData = SharedBigDataViewerData.fromSpimDataXmlFile( spimDataXmlFilename, new ViewerOptions(), new VolumeViewerOptions(), () -> {} );
 
 		final Model model = new Model( project.getSpaceUnits(), project.getTimeUnits() );
 		loadProject( context, project, model );

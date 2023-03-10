@@ -28,29 +28,9 @@
  */
 package org.mastodon.mamut;
 
-import static org.mastodon.app.MastodonIcons.BDV_VIEW_ICON;
-import static org.mastodon.app.MastodonIcons.FEATURES_ICON;
-import static org.mastodon.app.MastodonIcons.TABLE_VIEW_ICON;
-import static org.mastodon.app.MastodonIcons.TAGS_ICON;
-import static org.mastodon.app.MastodonIcons.TRACKSCHEME_VIEW_ICON;
-
-import java.awt.Desktop;
-import java.awt.Window;
-import java.awt.event.WindowEvent;
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Consumer;
-
-import javax.swing.JDialog;
-
+import bdv.util.InvokeOnEDT;
+import bdv.viewer.ViewerPanel;
+import net.imglib2.realtransform.AffineTransform3D;
 import org.mastodon.feature.FeatureSpecsService;
 import org.mastodon.feature.ui.FeatureColorModeConfigPage;
 import org.mastodon.mamut.feature.MamutFeatureProjectionsManager;
@@ -62,13 +42,7 @@ import org.mastodon.mamut.plugin.MamutPlugins;
 import org.mastodon.model.tag.ui.TagSetDialog;
 import org.mastodon.ui.SelectionActions;
 import org.mastodon.ui.coloring.feature.FeatureColorModeManager;
-import org.mastodon.ui.keymap.CommandDescriptionProvider;
-import org.mastodon.ui.keymap.CommandDescriptions;
-import org.mastodon.ui.keymap.CommandDescriptionsBuilder;
-import org.mastodon.ui.keymap.KeyConfigContexts;
-import org.mastodon.ui.keymap.Keymap;
-import org.mastodon.ui.keymap.KeymapManager;
-import org.mastodon.ui.keymap.KeymapSettingsPage;
+import org.mastodon.ui.keymap.*;
 import org.mastodon.util.RunnableActionPair;
 import org.mastodon.util.ToggleDialogAction;
 import org.mastodon.views.bdv.overlay.ui.RenderSettingsConfigPage;
@@ -91,9 +65,18 @@ import org.scijava.ui.behaviour.util.AbstractNamedAction;
 import org.scijava.ui.behaviour.util.Actions;
 import org.scijava.ui.behaviour.util.RunnableAction;
 
-import bdv.util.InvokeOnEDT;
-import bdv.viewer.ViewerPanel;
-import net.imglib2.realtransform.AffineTransform3D;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.*;
+import java.util.function.Consumer;
+
+import static org.mastodon.app.MastodonIcons.*;
 
 /**
  * Main GUI class for the Mastodon Mamut application.
@@ -111,6 +94,7 @@ public class WindowManager
 {
 	
 	public static final String NEW_BDV_VIEW = "new bdv view";
+	public static final String NEW_BVV_VIEW = "new bvv view";
 	public static final String NEW_TRACKSCHEME_VIEW = "new trackscheme view";
 	public static final String NEW_TABLE_VIEW = "new full table view";
 	public static final String NEW_SELECTION_TABLE_VIEW = "new selection table view";
@@ -121,6 +105,7 @@ public class WindowManager
 	public static final String OPEN_ONLINE_DOCUMENTATION = "open online documentation";
 
 	static final String[] NEW_BDV_VIEW_KEYS = new String[] { "not mapped" };
+	static final String[] NEW_BVV_VIEW_KEYS = new String[] { "not mapped" };
 	static final String[] NEW_TRACKSCHEME_VIEW_KEYS = new String[] { "not mapped" };
 	static final String[] NEW_TABLE_VIEW_KEYS = new String[] { "not mapped" };
 	static final String[] NEW_SELECTION_TABLE_VIEW_KEYS = new String[] { "not mapped" };
@@ -155,6 +140,7 @@ public class WindowManager
 		public void getCommandDescriptions( final CommandDescriptions descriptions )
 		{
 			descriptions.add( NEW_BDV_VIEW, NEW_BDV_VIEW_KEYS, "Open a new BigDataViewer view." );
+			descriptions.add( NEW_BVV_VIEW, NEW_BVV_VIEW_KEYS, "Open a new BigVolumeViewer view." );
 			descriptions.add( NEW_TRACKSCHEME_VIEW, NEW_TRACKSCHEME_VIEW_KEYS, "Open a new TrackScheme view." );
 			descriptions.add( NEW_TABLE_VIEW, NEW_TABLE_VIEW_KEYS, "Open a new table view. "
 					+ "The table displays the full data." );
@@ -182,6 +168,12 @@ public class WindowManager
 
 	/** All currently open branch TrackScheme windows. */
 	private final List< MamutBranchViewBdv > bbdvWindows = new ArrayList<>();
+
+	/** All currently open BigVolumeViewer windows. */
+	private final List< MamutViewBvv > bvvWindows = new ArrayList<>();
+
+	/** All currently open branch TrackScheme windows. */
+	private final List< MamutBranchViewBvv > bbvvWindows = new ArrayList<>();
 
 	/** The {@link ContextProvider}s of all currently open BigDataViewer windows. */
 	private final List< ContextProvider< Spot > > contextProviders = new ArrayList<>();
@@ -216,6 +208,8 @@ public class WindowManager
 
 	private final AbstractNamedAction newBdvViewAction;
 
+	private final AbstractNamedAction newBvvViewAction;
+
 	private final AbstractNamedAction newTrackSchemeViewAction;
 
 	private final AbstractNamedAction newHierarchyTrackSchemeViewAction;
@@ -243,6 +237,7 @@ public class WindowManager
 	final ProjectManager projectManager;
 
 	private final Listeners.List< BdvViewCreatedListener > bdvViewCreatedListeners;
+	private final Listeners.List< BvvViewCreatedListener > bvvViewCreatedListeners;
 
 	private final PreferencesDialog settings;
 
@@ -290,6 +285,7 @@ public class WindowManager
 		projectManager.install( globalAppActions );
 
 		newBdvViewAction = new RunnableActionPair( NEW_BDV_VIEW, this::createBigDataViewer, this::createBranchBigDataViewer );
+		newBvvViewAction = new RunnableActionPair( NEW_BVV_VIEW, this::createBigVolumeViewer, this::createBranchBigVolumeViewer );
 		newTrackSchemeViewAction = new RunnableActionPair( NEW_TRACKSCHEME_VIEW, this::createTrackScheme, this::createBranchTrackScheme );
 		newTableViewAction = new RunnableAction( NEW_TABLE_VIEW, () -> createTable( false ) );
 		newSelectionTableViewAction = new RunnableAction( NEW_SELECTION_TABLE_VIEW, () -> createTable( true ) );
@@ -302,6 +298,7 @@ public class WindowManager
 		final RunnableAction openOnlineDocumentation = new RunnableAction( OPEN_ONLINE_DOCUMENTATION, this::openOnlineDocumentation );
 
 		globalAppActions.namedAction( newBdvViewAction, NEW_BDV_VIEW_KEYS );
+		globalAppActions.namedAction( newBvvViewAction, NEW_BVV_VIEW_KEYS );
 		globalAppActions.namedAction( newTrackSchemeViewAction, NEW_TRACKSCHEME_VIEW_KEYS );
 		globalAppActions.namedAction( newTableViewAction, NEW_SELECTION_TABLE_VIEW_KEYS );
 		globalAppActions.namedAction( newSelectionTableViewAction, NEW_SELECTION_TABLE_VIEW_KEYS );
@@ -327,6 +324,7 @@ public class WindowManager
 		updateEnabledActions();
 
 		bdvViewCreatedListeners = new Listeners.SynchronizedList<>();
+		bvvViewCreatedListeners = new Listeners.SynchronizedList<>();
 	}
 
 	private void discoverPlugins()
@@ -354,6 +352,7 @@ public class WindowManager
 	private void updateEnabledActions()
 	{
 		newBdvViewAction.setEnabled( appModel != null );
+		newBvvViewAction.setEnabled( appModel != null );
 		newTrackSchemeViewAction.setEnabled( appModel != null );
 		newTableViewAction.setEnabled( appModel != null );
 		newSelectionTableViewAction.setEnabled( appModel != null );
@@ -418,10 +417,36 @@ public class WindowManager
 		} );
 	}
 
+	private synchronized void addBvvWindow( final MamutViewBvv w )
+	{
+		bvvWindows.add( w );
+		contextProviders.add( w.getContextProvider() );
+		for ( final MamutViewTrackScheme tsw : tsWindows )
+			tsw.getContextChooser().updateContextProviders( contextProviders );
+		for ( final MamutViewTable tw : tableWindows )
+			tw.getContextChooser().updateContextProviders( contextProviders );
+		for ( final MamutViewGrapher gw : grapherWindows )
+			gw.getContextChooser().updateContextProviders( contextProviders );
+		w.onClose( () -> {
+			bvvWindows.remove( w );
+			contextProviders.remove( w.getContextProvider() );
+			for ( final MamutViewTrackScheme tsw : tsWindows )
+				tsw.getContextChooser().updateContextProviders( contextProviders );
+			for ( final MamutViewTable tw : tableWindows )
+				tw.getContextChooser().updateContextProviders( contextProviders );
+		} );
+	}
+
 	private synchronized void addBBdvWindow( final MamutBranchViewBdv w )
 	{
 		bbdvWindows.add( w );
 		w.onClose( () -> bbdvWindows.remove( w ) );
+	}
+
+	private synchronized void addBBvvWindow( final MamutBranchViewBvv w )
+	{
+		bbvvWindows.add( w );
+		w.onClose( () -> bbvvWindows.remove( w ) );
 	}
 
 	private synchronized void addTsWindow( final MamutViewTrackScheme w )
@@ -565,6 +590,14 @@ public class WindowManager
 	}
 
 	/**
+	 * Creates and displays a new BVV view, with default display settings.
+	 */
+	public MamutViewBvv createBigVolumeViewer()
+	{
+		return createBigVolumeViewer( new HashMap<>() );
+	}
+
+	/**
 	 * Creates and displays a new BDV view, using a map to specify the display
 	 * settings.
 	 * <p>
@@ -607,6 +640,54 @@ public class WindowManager
 			view.getFrame().setIconImages( BDV_VIEW_ICON );
 			addBdvWindow( view );
 			bdvViewCreatedListeners.list.forEach( l -> l.bdvViewCreated( view ) );
+			return view;
+		}
+		return null;
+	}
+
+	/**
+	 * Creates and displays a new BVV view, using a map to specify the display
+	 * settings.
+	 * <p>
+	 * The display settings are specified as a map of strings to objects. The
+	 * accepted key and value types are:
+	 * <ul>
+	 * <li><code>'FramePosition'</code> &rarr; an <code>int[]</code> array of 4
+	 * elements: x, y, width and height.
+	 * <li><code>'LockGroupId'</code> &rarr; an integer that specifies the lock
+	 * group id.
+	 * <li><code>'SettingsPanelVisible'</code> &rarr; a boolean that specifies
+	 * whether the settings panel is visible on this view.
+	 * <li><code>'BdvState'</code> &rarr; a XML Element that specifies the BDV
+	 * window state. See {@link ViewerPanel#stateToXml()} and
+	 * {@link ViewerPanel#stateFromXml(org.jdom2.Element)} for more information.
+	 * <li><code>'BdvTransform'</code> &rarr; an {@link AffineTransform3D} that
+	 * specifies the view point.
+	 * <li><code>'NoColoring'</code> &rarr; a boolean; if <code>true</code>, the
+	 * feature or tag coloring will be ignored.
+	 * <li><code>'TagSet'</code> &rarr; a string specifying the name of the
+	 * tag-set to use for coloring. If not <code>null</code>, the coloring will
+	 * be done using the tag-set.
+	 * <li><code>'FeatureColorMode'</code> &rarr; a String specifying the name
+	 * of the feature color mode to use for coloring. If not <code>null</code>,
+	 * the coloring will be done using the feature color mode.
+	 * <li><code>'ColorbarVisible'</code> &rarr; a boolean specifying whether
+	 * the colorbar is visible for tag-set and feature-based coloring.
+	 * <li><code>'ColorbarPosition'</code> &rarr; a {@link Position} specifying
+	 * the position of the colorbar.
+	 * </ul>
+	 *
+	 * @param guiState
+	 *            the map of settings.
+	 */
+	public MamutViewBvv createBigVolumeViewer( final Map< String, Object > guiState )
+	{
+		if ( appModel != null )
+		{
+			final MamutViewBvv view = new MamutViewBvv( appModel, guiState );
+			view.getFrame().setIconImages( BDV_VIEW_ICON );
+			addBvvWindow( view );
+			bvvViewCreatedListeners.list.forEach( l -> l.bvvViewCreated( view ) );
 			return view;
 		}
 		return null;
@@ -798,6 +879,16 @@ public class WindowManager
 		return createBranchBigDataViewer( new HashMap<>() );
 	}
 
+
+	/**
+	 * Creates and displays a new Branch-BDV view, with default display
+	 * settings. The branch version of this view displays the branch graph.
+	 */
+	public MamutBranchViewBvv createBranchBigVolumeViewer()
+	{
+		return createBranchBigVolumeViewer( new HashMap<>() );
+	}
+
 	/**
 	 * Creates and displays a new Branch-BDV view, using a map to specify the
 	 * display settings.
@@ -813,6 +904,26 @@ public class WindowManager
 			final MamutBranchViewBdv view = new MamutBranchViewBdv( appModel, guiState );
 			view.getFrame().setIconImages( BDV_VIEW_ICON );
 			addBBdvWindow( view );
+			return view;
+		}
+		return null;
+	}
+
+	/**
+	 * Creates and displays a new Branch-BDV view, using a map to specify the
+	 * display settings.
+	 *
+	 * @see #createBigDataViewer(Map)
+	 * @param guiState
+	 *            the settings map.
+	 */
+	public MamutBranchViewBvv createBranchBigVolumeViewer( final Map< String, Object > guiState )
+	{
+		if ( appModel != null )
+		{
+			final MamutBranchViewBvv view = new MamutBranchViewBvv( appModel, guiState );
+			view.getFrame().setIconImages( BDV_VIEW_ICON );
+			addBBvvWindow( view );
 			return view;
 		}
 		return null;
@@ -1053,8 +1164,21 @@ public class WindowManager
 		void bdvViewCreated( final MamutViewBdv view );
 	}
 
+	/**
+	 * Classes that implement {@link BvvViewCreatedListener} get a notification when
+	 * a new {@link MamutViewBvv} instance is created.
+	 */
+	public interface BvvViewCreatedListener
+	{
+		void bvvViewCreated( final MamutViewBvv view );
+	}
+
 	public Listeners< BdvViewCreatedListener > bdvViewCreatedListeners()
 	{
 		return bdvViewCreatedListeners;
+	}
+	public Listeners< BvvViewCreatedListener > bvvViewCreatedListeners()
+	{
+		return bvvViewCreatedListeners;
 	}
 }
