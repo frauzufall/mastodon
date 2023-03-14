@@ -70,7 +70,7 @@ public class TrackSchemeNavigationBehaviours implements TransformListener< Scree
 	public static final String BOX_ADD_SELECT = "ts box add to selection";
 
 	private static final String[] FOCUS_VERTEX_KEYS = new String[] { "button1", "shift button1" };
-	private static final String[] NAVIGATE_TO_VERTEX_KEYS = new String[] { "double-click button1", "shift double-click button1" };
+	private static final String[] NAVIGATE_TO_VERTEX_KEYS = new String[] { "button1", "double-click button1", "shift double-click button1" };
 	private static final String[] SELECT_KEYS = new String[] { "button1"};
 	private static final String[] ADD_SELECT_KEYS = new String[] { "shift button1"};
 	private static final String[] BOX_SELECT_KEYS = new String[] { "button1"};

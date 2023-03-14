@@ -49,7 +49,7 @@ public class BdvSelectionBehaviours< V extends OverlayVertex< V, E >, E extends 
 	public static final String ADD_SELECT = "bdv click add to selection";
 
 	private static final String[] FOCUS_VERTEX_KEYS = new String[] { "button1", "shift button1" };
-	private static final String[] NAVIGATE_TO_VERTEX_KEYS = new String[] { "double-click button1", "shift double-click button1" };
+	private static final String[] NAVIGATE_TO_VERTEX_KEYS = new String[] { "button1", "shift double-click button1" };
 	private static final String[] SELECT_KEYS = new String[] { "button1" };
 	private static final String[] ADD_SELECT_KEYS = new String[] { "shift button1" };
 
@@ -254,6 +254,7 @@ public class BdvSelectionBehaviours< V extends OverlayVertex< V, E >, E extends 
 		public void click( final int x, final int y )
 		{
 			select( x, y, addToSelection );
+			navigate( x, y );
 		}
 	}
 

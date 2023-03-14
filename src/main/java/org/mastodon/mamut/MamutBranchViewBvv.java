@@ -202,9 +202,9 @@ public class MamutBranchViewBvv extends MamutBranchView<
 		graph.addVertexPositionListener( ( v ) -> viewer.getDisplay().getComponent().repaint() );
 
 		// Forward navigation to view.
-//		final OverlayNavigation< OverlayVertexWrapper< BranchSpot, BranchLink >, OverlayEdgeWrapper< BranchSpot, BranchLink > > overlayNavigation =
-//				new OverlayNavigation<>( viewer, viewGraph );
-//		navigationHandler.listeners().add( overlayNavigation );
+		final VolumeOverlayNavigation< OverlayVertexWrapper< BranchSpot, BranchLink >, OverlayEdgeWrapper< BranchSpot, BranchLink > > overlayNavigation =
+				new VolumeOverlayNavigation<>( viewer, viewGraph );
+		navigationHandler.listeners().add( overlayNavigation );
 
 		final BdvHighlightHandler< ?, ? > highlightHandler = new BdvHighlightHandler<>( viewGraph, tracksOverlay, highlightModel );
 		viewer.getDisplay().addHandler( highlightHandler );

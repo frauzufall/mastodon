@@ -206,7 +206,7 @@ public class DataDisplayOptions
 
 		private KeyPressedManager keyPressedManager = null;
 
-		private NavigationEtiquette navigationEtiquette = NavigationEtiquette.MINIMAL;
+		private NavigationEtiquette navigationEtiquette = NavigationEtiquette.CENTERING;
 
 		private DataDisplayStyle style = DataDisplayStyle.defaultStyle();
 
